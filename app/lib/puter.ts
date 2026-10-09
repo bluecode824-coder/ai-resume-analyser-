@@ -243,8 +243,9 @@ export const usePuterStore = create<PuterStore>((set, get) => {
                 isLoading: false,
             });
         } catch (err) {
-            removeDemoValue("user");
-            applyDemoAuth(null, null);
+            const message = err instanceof Error ? err.message : "Failed to log out. Please try again.";
+            set({ error: message, isLoading: false });
+            throw new Error(message);
         }
     };
 
