@@ -67,6 +67,13 @@ export const parseAIResumeFeedback = (response: AIResponse | undefined): Feedbac
         throw new Error("The AI returned unreadable feedback. Please retry the analysis.");
     }
 
+    if (!isRecord(parsed) || typeof parsed.isResume !== "boolean") {
+        throw new Error("The AI couldn't confirm this document is a resume. Please upload a resume and try again.");
+    }
+    if (!parsed.isResume) {
+        throw new Error("This document doesn't appear to be a resume, so no score was generated.");
+    }
+
     if (!isRecord(parsed) || typeof parsed.overallScore !== "number" || !Number.isFinite(parsed.overallScore)) {
         throw new Error("The AI response is missing a valid overall score. Please retry the analysis.");
     }
@@ -89,8 +96,16 @@ export const parseAIResumeFeedback = (response: AIResponse | undefined): Feedbac
     const structure = getSection("structure");
     const skills = getSection("skills");
 
+    const overallScore = Math.round(
+        ats.score * 0.25 +
+        contentSection.score * 0.3 +
+        skills.score * 0.2 +
+        structure.score * 0.15 +
+        toneAndStyle.score * 0.1
+    );
+
     return {
-        overallScore: Math.max(0, Math.min(100, Math.round(parsed.overallScore))),
+        overallScore,
         ATS: { score: ats.score, tips: parseTipList(ats.tips, "ATS", false) },
         toneAndStyle: { score: toneAndStyle.score, tips: parseTipList(toneAndStyle.tips, "tone and style", true) },
         content: { score: contentSection.score, tips: parseTipList(contentSection.tips, "content", true) },

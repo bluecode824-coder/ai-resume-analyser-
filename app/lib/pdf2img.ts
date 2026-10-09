@@ -1,6 +1,7 @@
 export interface PdfConversionResult {
     imageUrl: string;
     file: File | null;
+    text?: string;
     error?: string;
 }
 
@@ -33,6 +34,7 @@ export async function convertPdfToImage(
 
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await lib.getDocument({ data: arrayBuffer }).promise;
+        const text = await getPdfText(pdf);
         const page = await pdf.getPage(1);
 
         const viewport = page.getViewport({ scale: 4 });
@@ -62,6 +64,7 @@ export async function convertPdfToImage(
                         resolve({
                             imageUrl: URL.createObjectURL(blob),
                             file: imageFile,
+                            text,
                         });
                     } else {
                         resolve({
@@ -82,4 +85,28 @@ export async function convertPdfToImage(
             error: `Failed to convert PDF: ${err}`,
         };
     }
+}
+
+export async function extractPdfText(file: Blob): Promise<string> {
+    const lib = await loadPdfJs();
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await lib.getDocument({ data: arrayBuffer }).promise;
+    return getPdfText(pdf);
+}
+
+async function getPdfText(pdf: { numPages: number; getPage: (page: number) => Promise<any> }) {
+    const pageTexts: string[] = [];
+
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        const page = await pdf.getPage(pageNumber);
+        const content = await page.getTextContent();
+        pageTexts.push(
+            content.items
+                .map((item: { str?: string }) => item.str ?? "")
+                .filter(Boolean)
+                .join(" ")
+        );
+    }
+
+    return pageTexts.join("\n").replace(/\s+/g, " ").trim().slice(0, 20_000);
 }

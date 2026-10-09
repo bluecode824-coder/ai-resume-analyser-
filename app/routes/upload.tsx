@@ -5,8 +5,9 @@ import {usePuterStore} from "~/lib/puter";
 import {Link, useNavigate} from "react-router";
 import {convertPdfToImage} from "~/lib/pdf2img";
 import {generateUUID} from "~/lib/utils";
-import {prepareInstructions} from "../../constants";
+import {prepareResumeInstructions} from "../../constants";
 import {getAIErrorMessage, parseAIResumeFeedback} from "~/lib/feedback";
+import {getResumeValidationError} from "~/lib/resumeValidation";
 
 const Upload = () => {
     const { auth, isLoading, fs, ai, kv } = usePuterStore();
@@ -27,13 +28,16 @@ const Upload = () => {
         setSavedResumeId(null);
 
         try {
+            setStatusText('Converting to image...');
+            const imageFile = await convertPdfToImage(file);
+            if(!imageFile.file) throw new Error(imageFile.error ?? 'Failed to convert the PDF to an image.');
+
+            const validationError = getResumeValidationError(imageFile.text ?? "");
+            if (validationError) throw new Error(validationError);
+
             setStatusText('Uploading the file...');
             const uploadedFile = await fs.upload([file]);
             if(!uploadedFile) throw new Error('Failed to upload the resume file.');
-
-            setStatusText('Converting to image...');
-            const imageFile = await convertPdfToImage(file);
-            if(!imageFile.file) throw new Error('Failed to convert the PDF to an image.');
 
             setStatusText('Uploading the preview...');
             const uploadedImage = await fs.upload([imageFile.file]);
@@ -55,7 +59,11 @@ const Upload = () => {
 
             setStatusText('Analyzing your resume with AI...');
             data.feedback = parseAIResumeFeedback(
-                await ai.feedback(uploadedFile.path, prepareInstructions({ jobTitle, jobDescription }))
+                await ai.feedback(uploadedFile.path, prepareResumeInstructions({
+                    jobTitle,
+                    jobDescription,
+                    resumeText: imageFile.text ?? "",
+                }))
             );
 
             const updated = await kv.set(`resume:${uuid}`, JSON.stringify(data));

@@ -70,6 +70,8 @@ If you're getting started and need assistance or face any bugs, join our active 
 
 👉 **AI resume matching**: Provide a job listing and get an ATS score with custom feedback tailored to each resume.
 
+👉 **Evidence-based resume review**: Resume-like PDF content is checked before analysis; scores are calibrated against clear anchors and weighted across ATS, content, skills, structure, and tone. Upload a text-based PDF so its contents can be verified and analyzed.
+
 👉 **Reusable, modern UI**: Built with clean, consistent components for a great-looking and maintainable interface.
 
 👉 **Code Reusability**: Leverage reusable components and a modular codebase for efficient development.

@@ -5,7 +5,9 @@ import Summary from "~/components/Summary";
 import ATS from "~/components/ATS";
 import Details from "~/components/Details";
 import {getAIErrorMessage, parseAIResumeFeedback} from "~/lib/feedback";
-import {prepareInstructions} from "../../constants";
+import {prepareResumeInstructions} from "../../constants";
+import {extractPdfText} from "~/lib/pdf2img";
+import {getResumeValidationError} from "~/lib/resumeValidation";
 
 export const meta = () => ([
     { title: 'Resumind | Review ' },
@@ -68,12 +70,21 @@ const Resume = () => {
         setIsGeneratingFeedback(true);
         setFeedbackError(null);
         try {
+            const resumeBlob = await fs.read(resumeData.resumePath);
+            if (!resumeBlob) {
+                throw new Error("The saved resume PDF could not be loaded. Please upload it again.");
+            }
+            const resumeText = await extractPdfText(resumeBlob);
+            const validationError = getResumeValidationError(resumeText);
+            if (validationError) throw new Error(validationError);
+
             const generatedFeedback = parseAIResumeFeedback(
                 await ai.feedback(
                     resumeData.resumePath,
-                    prepareInstructions({
+                    prepareResumeInstructions({
                         jobTitle: resumeData.jobTitle ?? "",
                         jobDescription: resumeData.jobDescription ?? "",
+                        resumeText,
                     })
                 )
             );
